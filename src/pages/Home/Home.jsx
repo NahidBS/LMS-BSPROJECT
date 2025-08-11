@@ -297,7 +297,7 @@
 // }
 
 // Home.jsx
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
 import Sidebar from "../../components/Sidebar/Sidebar";
 import Section from "../../components/Section/Section";
 import books from "../../data/sampleBooks";
@@ -307,35 +307,82 @@ import FeaturedBanner from "../../components/FeaturedBanner/FeaturedBanner";
 import NewBookCollections from "../../components/NewBookCollections/NewBookCollections";
 import { Link } from "react-router-dom";
 import { Star } from "lucide-react";
+import api from "../../api";
+
+
+const transformBook = (book, index) => ({
+  id: book.id || book.name || index,
+  title: book.title || book.name ||  "Untitled",
+  author: book.author || book.authors || "Unknown Author",
+  image: book.book_cover_url ||
+    "https://via.placeholder.com/150x220.png?text=No+Cover",
+  rating: book.rating || 0,
+  ratingCount: book.ratingCount || book.reviewCount || 0,
+  summary: book.summary || book.shortDetails ||"",
+  publisher: book.publisher || "",
+  publishDate: book.publishDate || "",
+  category: book.category || "",
+  pdfLink: book.pdfLink || "",
+});
 
 export default function Home() {
   const [filter, setFilter] = useState(null);
+  const [books, setBooks] = useState({recommended: [], popular: [] });
+  const [loading, setLoading] = useState(true);
 
   const allBooks = useMemo(
     () => [...(books?.recommended || []), ...(books?.popular || [])],
-    []
+    [books]
   );
 
-  const filtered = useMemo(() => {
-    if (!filter) return [];
+  const fetchBooks = async () => {
+      try {
+        const [popularRes , recommendedRes] = await Promise.all([
+          api.get("/book/popular-books?limit=10"),
+          api.get("/book/recommended-books"),
+        ]);
+ 
+        const recommendedBooks = (recommendedRes.data || []).map(
+          transformBook
+        );
+        // const popularBooks = (popularRes.data.data || []).map(transformBook);
+        const popularBooks = (popularRes.data || []).map(transformBook);
+ 
+        setBooks({
+          recommended: recommendedBooks,
+          popular: popularBooks,
+        });
+      } catch (err) {
+        console.error("Failed to fetch books:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+  useEffect(() => {
+    fetchBooks();
+  }, []);
 
-    if (filter.type === "all") return allBooks;
 
-    if (filter.type === "category") {
-      return allBooks.filter(
-        (b) => (b.category || "").toLowerCase() === (filter.value || "").toLowerCase()
-      );
-    }
+  // const filtered = useMemo(() => {
+  //   if (!filter) return [];
 
-    if (filter.type === "subcategory") {
-      return allBooks.filter(
-        (b) =>
-          (b.category || "").toLowerCase() === (filter.parent || "").toLowerCase()
-      );
-    }
+  //   if (filter.type === "all") return allBooks;
 
-    return allBooks;
-  }, [filter, allBooks]);
+  //   if (filter.type === "category") {
+  //     return allBooks.filter(
+  //       (b) => (b.category || "").toLowerCase() === (filter.value || "").toLowerCase()
+  //     );
+  //   }
+
+  //   if (filter.type === "subcategory") {
+  //     return allBooks.filter(
+  //       (b) =>
+  //         (b.category || "").toLowerCase() === (filter.parent || "").toLowerCase()
+  //     );
+  //   }
+
+  //   return allBooks;
+  // }, [filter, allBooks]);
 
   const renderStars = (rating = 0) =>
     [...Array(5)].map((_, i) => (
