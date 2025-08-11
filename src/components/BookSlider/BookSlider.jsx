@@ -330,33 +330,67 @@
 import React, { useState, useEffect } from 'react';
 import { FaStar, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import booksData from '../../data/sampleBooks'; // ⬅️ use your shared data
+import api from "../../api";
+// import booksData from '../../data/sampleBooks'; // ⬅️ use your shared data
 
 const BookSlider = () => {
   const navigate = useNavigate();
+  const [books, setBooks] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAutoPlaying, setIsAutoPlaying] = useState(true);
 
-  // Build up to 8 cards: start with featuredBooks, then pull from popular/recommended
-  const base = (booksData?.featuredBooks || []);
-  const extrasSource = [
-    ...(booksData?.popular || []),
-    ...(booksData?.recommended || []),
-  ].map((b) => ({
-    ...b,
-    description: b.description || b.summary, // keep description text in card
-    status: b.status || b.availability,      // unify badge if present
-  }));
+   useEffect(() => {
+    const fetchBooks = async () => {
+      try {
+        const [popularRes, recommendedRes] = await Promise.all([
+          api.get("/book/popular-books"),
+          api.get("/book/recommended-books"),
+        ]);
 
-  const needed = Math.max(0, 8 - base.length);
-  const extras = extrasSource.slice(0, needed);
+        const merged = [...popularRes.data, ...recommendedRes.data]
+          .filter(
+            (b, index, self) => index === self.findIndex((x) => x.id === b.id)
+          )
+          .map((b) => ({
+            id: b.id,
+            title: b.name,
+            author: b.author,
+            description: b.shortDetails,
+            rating: b.averageRating ?? 4,
+            status: b.isAvailable ? "Available" : "Out Of Stock",
+            image: b.imageUrl || "https://via.placeholder.com/150",
+          }));
 
-  // Final slider list (8 items when available)
-  const books = [...base, ...extras].map((b) => ({
-    ...b,
-    rating: b.rating ?? 4,
-    status: b.status || b.availability,
-  }));
+        setBooks(merged);
+      } catch (error) {
+        console.error("Error fetching books:", error);
+      }
+    };
+
+    fetchBooks();
+  }, []);
+
+
+  // // Build up to 8 cards: start with featuredBooks, then pull from popular/recommended
+  // const base = (booksData?.featuredBooks || []);
+  // const extrasSource = [
+  //   ...(booksData?.popular || []),
+  //   ...(booksData?.recommended || []),
+  // ].map((b) => ({
+  //   ...b,
+  //   description: b.description || b.summary, // keep description text in card
+  //   status: b.status || b.availability,      // unify badge if present
+  // }));
+
+  // const needed = Math.max(0, 8 - base.length);
+  // const extras = extrasSource.slice(0, needed);
+
+  // // Final slider list (8 items when available)
+  // const books = [...base, ...extras].map((b) => ({
+  //   ...b,
+  //   rating: b.rating ?? 4,
+  //   status: b.status || b.availability,
+  // }));
 
   const visibleCards = 4;
   const step = 2; // ⬅️ move two-by-two
@@ -389,7 +423,7 @@ const BookSlider = () => {
 
   // Pass full book via route state to guarantee correct details
   const goToDetails = (book) => {
-    navigate(`/book/${book.id}`, { state: { fromSlider: book } });
+    navigate(`/book/retrieve/${book.id}`, { state: { fromSlider: book } });
   };
 
   return (

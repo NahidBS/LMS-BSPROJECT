@@ -359,6 +359,7 @@ export default function Home() {
       }
     };
   useEffect(() => {
+    console.log("Fetching book data for id:");
     fetchBooks();
   }, []);
 
@@ -394,7 +395,15 @@ export default function Home() {
       />
     ));
 
-  return (
+    if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p className="text-gray-500 text-lg">Loading books...</p>
+      </div>
+    );
+  }
+
+    return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
 
@@ -459,13 +468,12 @@ export default function Home() {
                             </span>
                           </div>
                           <p
-                            className={`text-xs font-medium mt-2 ${
-                              (b.title || "")
+                            className={`text-xs font-medium mt-2 ${(b.title || "")
                                 .toLowerCase()
                                 .includes("empire")
                                 ? "text-red-500"
                                 : "text-green-600"
-                            }`}
+                              }`}
                           >
                             {(b.title || "").toLowerCase().includes("empire")
                               ? "Out Of Stock"
